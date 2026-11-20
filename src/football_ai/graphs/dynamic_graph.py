@@ -67,7 +67,11 @@ def build_frame_graph(
 
     df["team_index"] = df["team_name"].map(team_to_index)
 
+    
+    # ==========================================================
     # Check frame-level possession information
+    # ==========================================================
+
     owner_ids = (
         df["possession_player_id"]
         .dropna()
@@ -81,16 +85,38 @@ def build_frame_graph(
     )
 
     if len(owner_ids) > 1:
-        raise ValueError("Multiple possession owners in one frame.")
+        raise ValueError(
+            "Multiple possession owners in one frame."
+        )
 
     if len(possession_groups) > 1:
-        raise ValueError("Multiple possession groups in one frame.")
+        raise ValueError(
+            "Multiple possession groups in one frame."
+        )
 
-        # Resolve possession group using external mapping
+    # Define possession variables BEFORE using them
+
+    possession_player = (
+        owner_ids[0]
+        if len(owner_ids) == 1
+        else None
+    )
+
+    possession_group = (
+        possession_groups[0]
+        if len(possession_groups) == 1
+        else None
+    )
+
+    # ==========================================================
+    # Resolve possession group using external mapping
+    # ==========================================================
 
     possession_team = None
 
-    available_teams = set(df["team_name"].unique())
+    available_teams = set(
+        df["team_name"].unique()
+    )
 
     if possession_group is not None:
 
@@ -113,7 +139,9 @@ def build_frame_graph(
                 "Mapped possession team is not present in this frame."
             )
 
-    # Validate possession player
+    # ==========================================================
+    # Validate possession player against possession team
+    # ==========================================================
 
     if possession_player is not None:
 
@@ -135,34 +163,6 @@ def build_frame_graph(
             raise ValueError(
                 "Possession owner team conflicts with possession group."
             )
-
-    possession_player = (
-        owner_ids[0] if len(owner_ids) == 1 else None
-    )
-
-    possession_group = (
-        possession_groups[0]
-        if len(possession_groups) == 1
-        else None
-    )
-
-    if (
-        possession_group is not None
-        and possession_group not in possession_mapping
-    ):
-        raise ValueError("Unknown possession group.")
-
-    possession_team = (
-        possession_mapping[possession_group]
-        if possession_group is not None
-        else None
-    )
-
-    if (
-        possession_player is not None
-        and possession_player not in set(df["player_id"])
-    ):
-        raise ValueError("Possession owner is not in this frame.")
 
     # Node features
     df["is_possession_player"] = (
