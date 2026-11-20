@@ -10,6 +10,7 @@ def build_frame_graph(
     frame_df,
     k_same_team=3,
     k_opponents=3,
+    possession_group_to_team=None,
 ):
     """
     Build a directed spatial graph for one match frame.
@@ -85,10 +86,55 @@ def build_frame_graph(
     if len(possession_groups) > 1:
         raise ValueError("Multiple possession groups in one frame.")
 
-    possession_mapping = {
-        "home team": "Brisbane Roar FC",
-        "away team": "Adelaide United Football Club",
-    }
+        # Resolve possession group using external mapping
+
+    possession_team = None
+
+    available_teams = set(df["team_name"].unique())
+
+    if possession_group is not None:
+
+        if possession_group_to_team is None:
+            raise ValueError(
+                "possession_group_to_team mapping is required."
+            )
+
+        if possession_group not in possession_group_to_team:
+            raise ValueError(
+                f"Unknown possession group: {possession_group}"
+            )
+
+        possession_team = (
+            possession_group_to_team[possession_group]
+        )
+
+        if possession_team not in available_teams:
+            raise ValueError(
+                "Mapped possession team is not present in this frame."
+            )
+
+    # Validate possession player
+
+    if possession_player is not None:
+
+        owner_rows = df[
+            df["player_id"] == possession_player
+        ]
+
+        if len(owner_rows) != 1:
+            raise ValueError(
+                "Possession owner is not present exactly once."
+            )
+
+        owner_team = owner_rows["team_name"].iloc[0]
+
+        if possession_team is None:
+            possession_team = owner_team
+
+        elif owner_team != possession_team:
+            raise ValueError(
+                "Possession owner team conflicts with possession group."
+            )
 
     possession_player = (
         owner_ids[0] if len(owner_ids) == 1 else None
